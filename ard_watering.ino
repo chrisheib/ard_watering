@@ -7,22 +7,24 @@ LiquidCrystal_I2C lcd(0x27, 16, 2); //Hier wird festgelegt um was für einen Dis
 const int ap_sensor1 = A0;
 const int ap_pot = A3;
 const int dp_pump1 = 2;
+const int dpButton = 4;
 const unsigned long repeatLimit = (long)1000 * 60 * 30;
-const int valueUpperLimit = 340;
 const long pumpRunTime = (long)1000 * 10;
-const int loopDelay = 250;
+const int loopDelay = 2000;
 
 int val = 0;
 int timesPumped = 0;
 unsigned long lastRun = 0;
-bool pumpRunning = false;
 int potVal = 0;
+int valueUpperLimit = 360;
+bool buttonPressed = false;
 
 //--------------------------------------------
 
 void setup() {
   pinMode(dp_pump1, OUTPUT);
   pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(dpButton, INPUT);
 
   // High = relay blocks, Low = relay opens
   digitalWrite(dp_pump1, HIGH);
@@ -32,7 +34,7 @@ void setup() {
   //Serial.print(repeatLimit);
 
   lcd.init(); //Im Setup wird der LCD gestartet 
-  lcd.backlight(); //Hintergru ndbeleuchtung einschalten (lcd.noBacklight(); schaltet die Beleuchtung aus). 
+  lcd.noBacklight(); //Hintergrundbeleuchtung einschalten (lcd.noBacklight(); schaltet die Beleuchtung aus). 
 
   
 
@@ -46,43 +48,47 @@ void loop() {
   
   // put your main code here, to run repeatedly:
   val = analogRead(ap_sensor1);
-  potVal = analogRead(ap_pot);
+  potVal = map(analogRead(ap_pot),0, 1023, 200, 600);
+  buttonPressed = digitalRead(dpButton);
   Serial.print("Gelesener Wert:");
   Serial.println(val);
 
   lcd.clear();
   
-  lcd.setCursor(0, 0);//Hier wird die Position des ersten Zeichens festgelegt. In diesem Fall bedeutet (0,0) das erste Zeichen in der ersten Zeile. 
+  lcd.setCursor(0, 0);
   lcd.print(val); 
-  lcd.setCursor(0, 1);//Hier wird die Position des ersten Zeichens festgelegt. In diesem Fall bedeutet (0,0) das erste Zeichen in der ersten Zeile. 
+  lcd.setCursor(0, 1);
   lcd.print(potVal); 
   
-  lcd.setCursor(4, 0);//Hier wird die Position des ersten Zeichens festgelegt. In diesem Fall bedeutet (0,0) das erste Zeichen in der ersten Zeile. 
+  lcd.setCursor(15, 0);
   lcd.print(timesPumped); 
+
+  if(buttonPressed) {
+    lcd.setCursor(5, 1);
+    lcd.print("pressed!");
+    valueUpperLimit = potVal;
+  }
+
+  lcd.setCursor(5, 0);
+  lcd.print(valueUpperLimit); 
 
   if (val > valueUpperLimit) {
     digitalWrite(LED_BUILTIN, HIGH);
-    if (!pumpRunning and ((lastRun == 0) or ((millis() - lastRun) > repeatLimit))) {
-      pumpRunning = true;
-      digitalWrite(dp_pump1, LOW);
+    if (((lastRun == 0) or ((millis() - lastRun) > repeatLimit))) {
       timesPumped++;
-      // +1, sonst wird der erste Tick bei Millis = 0 ausgeführt und es folgt direkt ein zweiter
-      //lastRun = max(millis(), 1);
+      
       lastRun = millis();
+      
       Serial.println("On");
-      //Serial.println(lastRun);
-      //Serial.println(millis());
-      //Serial.println(millis() - lastRun);
 
+      digitalWrite(dp_pump1, LOW);
+      delay(pumpRunTime);
+      digitalWrite(dp_pump1, HIGH);
+      
+      Serial.println("Off");
     }
   } else {
     digitalWrite(LED_BUILTIN, LOW);
-  }
-
-  if (pumpRunning and (millis() - lastRun > pumpRunTime)) {
-    digitalWrite(dp_pump1, HIGH);
-    pumpRunning = false;
-    Serial.println("Off");
   }
 
   delay (loopDelay);
