@@ -5,31 +5,26 @@ LiquidCrystal_I2C lcd(0x27, 16, 2); //Hier wird festgelegt um was für einen Dis
 //--------------------------------------------
 
 const int ap_sensor1 = A0;
-const int ap_sensor2 = A1;
 const int ap_pot = A3;
 const int dp_pump1 = 2;
-const int dp_pump2 = 7;
-const int dpButton1 = 4;
-const int dpButton2 = 5;
+const int dpButton = 4;
 const unsigned long repeatLimit = (long)1000 * 60 * 30;
 const long pumpRunTime = (long)1000 * 10;
 const int loopDelay = 2000;
 
-int timesPumped1 = 0;
-int timesPumped2 = 0;
-unsigned long lastRun1 = 0;
-unsigned long lastRun2 = 0;
-int value1UpperLimit = 360;
-int value2UpperLimit = 360;
-int selectedSensor = 1;
+int val = 0;
+int timesPumped = 0;
+unsigned long lastRun = 0;
+int potVal = 0;
+int valueUpperLimit = 360;
+bool buttonPressed = false;
 
 //--------------------------------------------
 
 void setup() {
   pinMode(dp_pump1, OUTPUT);
   pinMode(LED_BUILTIN, OUTPUT);
-  pinMode(dpButton1, INPUT);
-  pinMode(dpButton2, INPUT);
+  pinMode(dpButton, INPUT);
 
   // High = relay blocks, Low = relay opens
   digitalWrite(dp_pump1, HIGH);
@@ -50,66 +45,35 @@ void setup() {
 //--------------------------------------------
 
 void loop() {
-
-  // put your main code here, to run repeatedly:
-  int val1 = analogRead(ap_sensor1);
-  int val2 = analogRead(ap_sensor2);
-  int potVal = map(analogRead(ap_pot),0, 1023, 200, 600);
-  bool button1Pressed = digitalRead(dpButton1);
-  bool button2Pressed = digitalRead(dpButton2);
-  Serial.print("Gelesener Wert:");
-  Serial.println(val1);
-  Serial.println(val2);
   
-  if (button2Pressed) {
-    if (selectedSensor == 1){
-      selectedSensor = 2;
-    } else {
-      selectedSensor = 1;
-    }
-  }
-
-  if(button1Pressed) {
-    if (selectedSensor == 1){
-      value1UpperLimit = potVal;
-    } else {
-      value2UpperLimit = potVal;
-    }
-  }
-
-  // ------------------------ LCD --------
+  // put your main code here, to run repeatedly:
+  val = analogRead(ap_sensor1);
+  potVal = map(analogRead(ap_pot),0, 1023, 200, 600);
+  buttonPressed = digitalRead(dpButton);
+  Serial.print("Gelesener Wert:");
+  Serial.println(val);
 
   lcd.clear();
-
-  lcd.setCursor(8,selectedSensor);
-  lcd.print("x");
   
   lcd.setCursor(0, 0);
-  lcd.print(val1);
-  lcd.setCursor(1, 0);
-  lcd.print(val2);
-
-  lcd.setCursor(12, 1);
+  lcd.print(val); 
+  lcd.setCursor(0, 1);
   lcd.print(potVal); 
-
-  lcd.setCursor(4, 0);
-  lcd.print(value1UpperLimit);
-  lcd.setCursor(4, 1);
-  lcd.print(value2UpperLimit); 
   
-  lcd.setCursor(10, 0);
-  lcd.print(timesPumped1); 
-  lcd.setCursor(10, 1);
-  lcd.print(timesPumped2); 
+  lcd.setCursor(15, 0);
+  lcd.print(timesPumped); 
 
-  calcPump(val1, value1UpperLimit, lastRun1, timesPumped1, dp_pump1);
-  calcPump(val2, value2UpperLimit, lastRun2, timesPumped2, dp_pump2);
+  if(buttonPressed) {
+    lcd.setCursor(5, 1);
+    lcd.print("pressed!");
+    valueUpperLimit = potVal;
+  }
 
-  delay (loopDelay);
-}
+  lcd.setCursor(5, 0);
+  lcd.print(valueUpperLimit); 
 
-void calcPump(int val, int limit, unsigned long &lastRun, int &timesPumped, int pin){
-  if (val > limit) {
+  if (val > valueUpperLimit) {
+    digitalWrite(LED_BUILTIN, HIGH);
     if (((lastRun == 0) or ((millis() - lastRun) > repeatLimit))) {
       timesPumped++;
       
@@ -117,11 +81,15 @@ void calcPump(int val, int limit, unsigned long &lastRun, int &timesPumped, int 
       
       Serial.println("On");
 
-      digitalWrite(pin, LOW);
+      digitalWrite(dp_pump1, LOW);
       delay(pumpRunTime);
-      digitalWrite(pin, HIGH);
+      digitalWrite(dp_pump1, HIGH);
       
       Serial.println("Off");
     }
+  } else {
+    digitalWrite(LED_BUILTIN, LOW);
   }
+
+  delay (loopDelay);
 }
