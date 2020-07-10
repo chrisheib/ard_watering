@@ -1,6 +1,6 @@
 #include <Wire.h> // Wire Bibliothek einbinden
 #include <LiquidCrystal_I2C.h> // Vorher hinzugefügte LiquidCrystal_I2C Bibliothek einbinden
-LiquidCrystal_I2C lcd(0x27, 16, 2); //Hier wird festgelegt um was für einen Display es sich handelt. In diesem Fall eines mit 16 Zeichen in 2 Zeilen und der HEX-Adresse 0x27. Für ein vierzeiliges I2C-LCD verwendet man den Code "LiquidCrystal_I2C lcd(0x27, 20, 4)" 
+LiquidCrystal_I2C lcd(0x27,16,2); 
 
 //--------------------------------------------
 
@@ -19,8 +19,8 @@ int timesPumped1 = 0;
 int timesPumped2 = 0;
 unsigned long lastRun1 = 0;
 unsigned long lastRun2 = 0;
-int value1UpperLimit = 360;
-int value2UpperLimit = 360;
+int value1UpperLimit = 600;
+int value2UpperLimit = 600;
 int selectedSensor = 1;
 
 //--------------------------------------------
@@ -39,7 +39,9 @@ void setup() {
   //Serial.print(repeatLimit);
 
   lcd.init(); //Im Setup wird der LCD gestartet 
-  lcd.noBacklight(); //Hintergrundbeleuchtung einschalten (lcd.noBacklight(); schaltet die Beleuchtung aus). 
+  lcd.clear();
+  //mlcd.noBacklight(); //Hintergrundbeleuchtung einschalten (lcd.noBacklight(); schaltet die Beleuchtung aus). 
+  lcd.backlight();
 
   
 
@@ -60,6 +62,9 @@ void loop() {
   Serial.print("Gelesener Wert:");
   Serial.println(val1);
   Serial.println(val2);
+  Serial.println(selectedSensor);
+  Serial.println(button1Pressed);
+  Serial.println(button2Pressed);
   
   if (button2Pressed) {
     if (selectedSensor == 1){
@@ -80,30 +85,41 @@ void loop() {
   // ------------------------ LCD --------
 
   lcd.clear();
-
-  lcd.setCursor(8,selectedSensor);
-  lcd.print("x");
+  
+  if (selectedSensor == 1){
+    lcd.setCursor(8,0);
+    lcd.print("x");
+  } else {
+    lcd.setCursor(8,1);
+    lcd.print("x");
+  }
   
   lcd.setCursor(0, 0);
   lcd.print(val1);
-  lcd.setCursor(1, 0);
+  lcd.setCursor(0, 1);
   lcd.print(val2);
-
-  lcd.setCursor(12, 1);
+//  
+//  delay(10);
+//
+  lcd.setCursor(13, 0);
   lcd.print(potVal); 
-
+//
   lcd.setCursor(4, 0);
   lcd.print(value1UpperLimit);
   lcd.setCursor(4, 1);
   lcd.print(value2UpperLimit); 
-  
+//  
+//  delay(10);
+//  
   lcd.setCursor(10, 0);
   lcd.print(timesPumped1); 
-  lcd.setCursor(10, 1);
-  lcd.print(timesPumped2); 
-
+//  lcd.setCursor(10, 1);
+//  lcd.print(timesPumped2); 
+//
+//  delay(10);
+  
   calcPump(val1, value1UpperLimit, lastRun1, timesPumped1, dp_pump1);
-  calcPump(val2, value2UpperLimit, lastRun2, timesPumped2, dp_pump2);
+  //calcPump(val2, value2UpperLimit, lastRun2, timesPumped2, dp_pump2);
 
   delay (loopDelay);
 }
