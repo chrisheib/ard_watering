@@ -1,6 +1,7 @@
 #include <Wire.h> 
 #include <Arduino.h>
 #include <U8g2lib.h>
+#include <EEPROM.h>
 
 U8G2_SH1106_128X64_NONAME_1_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
 
@@ -43,6 +44,9 @@ void setup() {
 
   Serial.begin(9600);
   Serial.println("Hi!");
+
+  EEPROM.get(0, value1UpperLimit);
+  EEPROM.get(2, value2UpperLimit);
 
   u8g2.begin();  
   
@@ -91,6 +95,8 @@ void loop() {
     } else {
       value2UpperLimit = potVal;
     }
+    EEPROM.put(0, value1UpperLimit);
+    EEPROM.put(2, value2UpperLimit);
   }
 
   // ------------------------ LED --------
