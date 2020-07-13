@@ -1,6 +1,8 @@
-#include <Wire.h> // Wire Bibliothek einbinden
-#include <LiquidCrystal_I2C.h> // Vorher hinzugefügte LiquidCrystal_I2C Bibliothek einbinden
-LiquidCrystal_I2C lcd(0x27,16,2); 
+#include <Wire.h> 
+#include <Arduino.h>
+#include <U8g2lib.h>
+
+U8G2_SH1106_128X64_NONAME_1_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
 
 //--------------------------------------------
 
@@ -12,16 +14,21 @@ const int dp_pump2 = 7;
 const int dpButton1 = 4;
 const int dpButton2 = 5;
 const unsigned long repeatLimit = (long)1000 * 60 * 30;
+const unsigned long screenActiveTime = (long)1000 * 60;
 const long pumpRunTime = (long)1000 * 10;
 const int loopDelay = 2000;
+const int row = 10;
+const int col = 6;
 
 int timesPumped1 = 0;
 int timesPumped2 = 0;
 unsigned long lastRun1 = 0;
 unsigned long lastRun2 = 0;
+unsigned long lastScreen = 0;
 int value1UpperLimit = 600;
 int value2UpperLimit = 600;
 int selectedSensor = 1;
+char formatBuffer[20];
 
 //--------------------------------------------
 
@@ -36,14 +43,15 @@ void setup() {
 
   Serial.begin(9600);
   Serial.println("Hi!");
-  //Serial.print(repeatLimit);
 
-  lcd.init(); //Im Setup wird der LCD gestartet 
-  lcd.clear();
-  //mlcd.noBacklight(); //Hintergrundbeleuchtung einschalten (lcd.noBacklight(); schaltet die Beleuchtung aus). 
-  lcd.backlight();
-
+  u8g2.begin();  
   
+  u8g2.setFont(u8g2_font_6x10_tf);
+  u8g2.setFontRefHeightExtendedText();
+  u8g2.setDrawColor(1);
+  u8g2.setFontPosTop();
+  u8g2.setFontDirection(0);
+
 
   // Damit nicht im nullten Tick gearbeitet wird.
   delay(200);
@@ -67,6 +75,9 @@ void loop() {
   Serial.println(button2Pressed);
   
   if (button2Pressed) {
+
+    lastScreen = millis();
+    
     if (selectedSensor == 1){
       selectedSensor = 2;
     } else {
@@ -82,42 +93,34 @@ void loop() {
     }
   }
 
-  // ------------------------ LCD --------
-
-  lcd.clear();
+  // ------------------------ LED --------
+  bool screenActive = (millis() - lastScreen) <= screenActiveTime;
   
-  if (selectedSensor == 1){
-    lcd.setCursor(8,0);
-    lcd.print("x");
+  if (screenActive) {
+    u8g2.firstPage();  
+    do {
+      // Selected Sensor & Potval
+      if (selectedSensor == 1){
+        u8g2.drawStr(col*0, row*0, ">");
+        u8g2.drawStr(col*10, row*0, format(potVal));
+      } else {
+        u8g2.drawStr(col*0, row*1, ">");
+        u8g2.drawStr(col*10, row*1, format(potVal));
+      }
+    
+      // Values & Limits
+      u8g2.drawStr(col*1, row*0, format(val1));
+      u8g2.drawStr(col*5, row*0, format(value1UpperLimit));
+      u8g2.drawStr(col*15, row*0, format(timesPumped1));
+    
+      u8g2.drawStr(col*1, row*1, format(val2));
+      u8g2.drawStr(col*5, row*1, format(value2UpperLimit));
+      u8g2.drawStr(col*15, row*0, format(timesPumped1));
+    } while( u8g2.nextPage() );
   } else {
-    lcd.setCursor(8,1);
-    lcd.print("x");
+    u8g2.clearDisplay();
   }
-  
-  lcd.setCursor(0, 0);
-  lcd.print(val1);
-  lcd.setCursor(0, 1);
-  lcd.print(val2);
-//  
-//  delay(10);
-//
-  lcd.setCursor(13, 0);
-  lcd.print(potVal); 
-//
-  lcd.setCursor(4, 0);
-  lcd.print(value1UpperLimit);
-  lcd.setCursor(4, 1);
-  lcd.print(value2UpperLimit); 
-//  
-//  delay(10);
-//  
-  lcd.setCursor(10, 0);
-  lcd.print(timesPumped1); 
-//  lcd.setCursor(10, 1);
-//  lcd.print(timesPumped2); 
-//
-//  delay(10);
-  
+
   calcPump(val1, value1UpperLimit, lastRun1, timesPumped1, dp_pump1);
   //calcPump(val2, value2UpperLimit, lastRun2, timesPumped2, dp_pump2);
 
@@ -140,4 +143,9 @@ void calcPump(int val, int limit, unsigned long &lastRun, int &timesPumped, int 
       Serial.println("Off");
     }
   }
+}
+
+char * format(int val){
+  itoa(val, formatBuffer, 10);
+  return formatBuffer;
 }
